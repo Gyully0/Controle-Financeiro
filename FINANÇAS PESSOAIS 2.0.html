@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhas Finanças + IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .card { transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .checkbox-wrapper input:checked + div { text-decoration: line-through; opacity: 0.5; }
+        .input-money { text-align: right; }
+        .ai-gradient { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- Header / Data -->
+    <header class="bg-blue-900 text-white p-6 shadow-lg sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-bold"><i class="fas fa-wallet mr-2"></i>Controle Financeiro</h1>
+            
+            <div class="flex items-center gap-2 bg-blue-800 p-2 rounded-lg">
+                <button onclick="changeMonth(-1)" class="p-2 hover:bg-blue-700 rounded"><i class="fas fa-chevron-left"></i></button>
+                <select id="monthSelect" onchange="loadData()" class="bg-transparent font-bold text-center outline-none cursor-pointer appearance-none px-2">
+                    <option value="0">Janeiro</option>
+                    <option value="1">Fevereiro</option>
+                    <option value="2">Março</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Maio</option>
+                    <option value="5">Junho</option>
+                    <option value="6">Julho</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Setembro</option>
+                    <option value="9">Outubro</option>
+                    <option value="10">Novembro</option>
+                    <option value="11">Dezembro</option>
+                </select>
+                <input type="number" id="yearSelect" onchange="loadData()" class="bg-transparent font-bold w-16 text-center outline-none" value="2025">
+                <button onclick="changeMonth(1)" class="p-2 hover:bg-blue-700 rounded"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto p-4 space-y-6">
+
+        <!-- Resumo Principal -->
+        <section id="statusPanel" class="grid grid-cols-1 md:grid-cols-4 gap-4 text-white rounded-xl p-6 shadow-md transition-colors duration-500 bg-gray-800">
+            <div class="text-center md:text-left">
+                <p class="text-sm opacity-80">Renda Líquida</p>
+                <p class="text-2xl font-bold" id="displayIncome">R$ 0,00</p>
+            </div>
+            <div class="text-center md:text-left">
+                <p class="text-sm opacity-80">Despesas Totais</p>
+                <p class="text-2xl font-bold" id="displayExpenses">R$ 0,00</p>
+            </div>
+            <div class="text-center md:text-left">
+                <p class="text-sm opacity-80">Saldo Final Previsto</p>
+                <p class="text-3xl font-bold" id="displayBalance">R$ 0,00</p>
+            </div>
+             <div class="text-center md:text-left border-l border-white/20 pl-4">
+                <p class="text-sm opacity-80">Pode gastar/dia (30d)</p>
+                <p class="text-xl font-bold" id="displayDaily">R$ 0,00</p>
+                <p class="text-xs mt-1" id="statusMessage">Calculando...</p>
+            </div>
+        </section>
+
+        <!-- Seção AI -->
+        <section class="bg-white rounded-xl shadow p-6 border border-purple-100">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-robot text-purple-600 mr-2"></i>Consultor Financeiro IA</h2>
+                    <p class="text-sm text-gray-500">Peça uma análise inteligente dos seus gastos deste mês.</p>
+                </div>
+                <button id="aiBtn" onclick="callGeminiAdvisor()" class="ai-gradient text-white px-6 py-3 rounded-full font-bold shadow hover:shadow-lg transform hover:-translate-y-1 transition-all flex items-center gap-2">
+                    <i class="fas fa-magic"></i> Analisar Minhas Finanças ✨
+                </button>
+            </div>
+
+            <!-- Configuração da API Key -->
+            <details class="bg-purple-50 rounded-lg border border-purple-100 mb-4 text-sm">
+                <summary class="cursor-pointer p-3 text-purple-700 font-semibold select-none flex items-center gap-2">
+                    <i class="fas fa-cog"></i> Configurar Chave da IA (Necessário para uso offline)
+                </summary>
+                <div class="p-4 pt-0 text-gray-600">
+                    <p class="mb-2">Para usar a IA fora do ambiente de chat, você precisa de uma chave gratuita do Google (Gemini API).</p>
+                    <ol class="list-decimal list-inside mb-3 space-y-1">
+                        <li>Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 underline hover:text-blue-800">Google AI Studio</a>.</li>
+                        <li>Crie uma chave clicando em "Create API key".</li>
+                        <li>Cole a chave abaixo e clique em Salvar.</li>
+                    </ol>
+                    <div class="flex gap-2">
+                        <input type="password" id="userApiKey" placeholder="Cole sua API Key aqui (ex: AIzaSy...)" class="flex-1 p-2 border border-gray-300 rounded focus:border-purple-500 outline-none bg-white">
+                        <button onclick="saveApiKey()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition">Salvar Chave</button>
+                    </div>
+                    <p class="text-xs mt-2 text-gray-400">Sua chave será salva apenas no navegador do seu dispositivo.</p>
+                </div>
+            </details>
+            
+            <div id="aiResult" class="hidden mt-6 bg-purple-50 p-6 rounded-lg border border-purple-100 text-gray-800 text-sm leading-relaxed whitespace-pre-line">
+                <!-- Resposta da IA aqui -->
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Coluna da Esquerda: Renda e Cartões -->
+            <div class="space-y-6">
+                
+                <!-- Renda -->
+                <div class="bg-white p-6 rounded-xl shadow card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-money-bill-wave text-green-600 mr-2"></i>Renda Mensal</h2>
+                        <button onclick="toggleIncomeMode()" class="text-xs text-blue-600 underline">Alternar Modo (Detalhado/Simples)</button>
+                    </div>
+
+                    <div id="incomeSimple" class="hidden">
+                        <label class="block text-sm text-gray-600 mb-1">Salário Líquido (Já com descontos)</label>
+                        <div class="flex items-center bg-gray-100 rounded p-2">
+                            <span class="text-gray-500 mr-2">R$</span>
+                            <input type="number" id="manualNetIncome" oninput="updateCalculations()" class="bg-transparent w-full outline-none font-bold text-lg text-green-700" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div id="incomeDetailed">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">Salário Bruto</label>
+                                <input type="number" id="grossSalary" oninput="updateCalculations()" class="w-full bg-gray-50 border rounded p-2 input-money" placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">Descontos (INSS/IR)</label>
+                                <input type="number" id="discounts" oninput="updateCalculations()" class="w-full bg-red-50 border rounded p-2 input-money text-red-600" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-2 border-t flex justify-between items-center">
+                            <span class="text-gray-600">Líquido Calculado:</span>
+                            <span class="font-bold text-green-700 text-lg" id="calculatedNet">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cartões de Crédito -->
+                <div class="bg-white p-6 rounded-xl shadow card border-t-4 border-purple-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-credit-card text-purple-600 mr-2"></i>Cartões de Crédito</h2>
+                        <button onclick="addItem('cards')" class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm hover:bg-purple-200">+ Adicionar</button>
+                    </div>
+                    <div id="cardsList" class="space-y-3">
+                        <!-- Items gerados via JS -->
+                    </div>
+                    <div class="mt-4 text-right text-sm text-gray-500 font-bold">
+                        Total Cartões: <span id="totalCards" class="text-purple-700">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <!-- Dicas de Economia (Dinâmico) -->
+                <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                    <h3 class="font-bold text-yellow-800 mb-2"><i class="fas fa-lightbulb mr-2"></i>Dica do Mês</h3>
+                    <p id="tipText" class="text-sm text-yellow-900">Mantenha seus gastos fixos abaixo de 50% da sua renda líquida para ter tranquilidade.</p>
+                </div>
+
+            </div>
+
+            <!-- Coluna da Direita: Despesas e Metas -->
+            <div class="space-y-6">
+
+                <!-- Economia / Metas -->
+                <div class="bg-white p-6 rounded-xl shadow card border-t-4 border-blue-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-piggy-bank text-blue-600 mr-2"></i>Metas / Economia</h2>
+                        <button onclick="addItem('savings')" class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm hover:bg-blue-200">+ Meta</button>
+                    </div>
+                    <div id="savingsList" class="space-y-3"></div>
+                </div>
+
+                <!-- Despesas Fixas (Casa) -->
+                <div class="bg-white p-6 rounded-xl shadow card border-t-4 border-orange-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-home text-orange-600 mr-2"></i>Contas Fixas</h2>
+                        <button onclick="addItem('fixed')" class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm hover:bg-orange-200">+ Conta</button>
+                    </div>
+                    <div id="fixedList" class="space-y-3"></div>
+                </div>
+
+                <!-- Despesas Variáveis -->
+                <div class="bg-white p-6 rounded-xl shadow card border-t-4 border-pink-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-shopping-cart text-pink-600 mr-2"></i>Gastos Variáveis</h2>
+                        <button onclick="addItem('variable')" class="bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-sm hover:bg-pink-200">+ Gasto</button>
+                    </div>
+                    <div id="variableList" class="space-y-3"></div>
+                </div>
+                
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Rodapé de Atribuição de Direitos Autorais -->
+    <footer class="max-w-5xl mx-auto p-4 text-center text-xs text-gray-500 mt-8 border-t pt-4">
+        © 2025 Meu Controle Financeiro Pessoal - Desenvolvido por Gyully beatriz camargo /GYC. Todos os direitos reservados.
+    </footer>
+
+    <!-- Script Principal -->
+    <script>
+        /**
+         * Minhas Finanças + IA - Controle Financeiro Pessoal
+         *
+         * Propriedade: Gyully beatriz camargo /GYC
+         * Ano de Criação: 2025
+         * Licença: Uso Pessoal e Exclusivo. É proibida a redistribuição ou comercialização não autorizada.
+         * ------------------------------------------------------------------------------------------------
+         * NOTA DE SEGURANÇA: Este código é de natureza client-side (HTML/JavaScript) e é executado diretamente no navegador do 
+         * usuário. Por favor, note que códigos client-side não podem ser totalmente protegidos contra 
+         * visualização e cópia (qualquer pessoa pode ver o código fonte). A proteção legal (direitos autorais) 
+         * é o principal meio de segurança contra "cair em mãos erradas".
+         */
+        const envApiKey = ""; // API Key from environment (empty in download)
+
+        // Estrutura de dados padrão
+        const defaultCategories = {
+            cards: [
+                { id: 1, name: 'Nubank', value: 0, paid: false },
+                { id: 2, name: 'Inter', value: 0, paid: false }
+            ],
+            savings: [
+                { id: 1, name: 'Reserva Emergência', value: 100, paid: false }
+            ],
+            fixed: [
+                { id: 1, name: 'Aluguel/Condomínio', value: 0, paid: false },
+                { id: 2, name: 'Energia', value: 0, paid: false },
+                { id: 3, name: 'Água', value: 0, paid: false },
+                { id: 4, name: 'Internet', value: 0, paid: false }
+            ],
+            variable: [
+                { id: 1, name: 'Academia', value: 0, paid: false },
+                { id: 2, name: 'Psicóloga', value: 0, paid: false },
+                { id: 3, name: 'Youtube Premium', value: 0, paid: false },
+                { id: 4, name: 'Mercado Semanal', value: 0, paid: false }
+            ]
+        };
+
+        let currentData = {};
+        let isManualIncome = false;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            document.getElementById('monthSelect').value = today.getMonth();
+            document.getElementById('yearSelect').value = today.getFullYear();
+            
+            // Carregar dados e chave salva
+            loadData();
+            const savedKey = localStorage.getItem('user_gemini_api_key');
+            if(savedKey) document.getElementById('userApiKey').value = savedKey;
+        });
+
+        // Gerar chave única para o LocalStorage baseada em Mês/Ano
+        function getDataKey() {
+            const m = document.getElementById('monthSelect').value;
+            const y = document.getElementById('yearSelect').value;
+            return `finance_data_${y}_${m}`;
+        }
+
+        // Carregar dados ou criar novos
+        function loadData() {
+            const key = getDataKey();
+            const stored = localStorage.getItem(key);
+
+            if (stored) {
+                currentData = JSON.parse(stored);
+            } else {
+                // Clona estrutura padrão para novo mês
+                currentData = JSON.parse(JSON.stringify(defaultCategories));
+                currentData.income = { gross: 0, discounts: 0, manual: 0 };
+            }
+
+            renderAll();
+            updateTips();
+            
+            // Esconde resultado AI se mudar o mes
+            document.getElementById('aiResult').classList.add('hidden');
+        }
+
+        function saveData() {
+            localStorage.setItem(getDataKey(), JSON.stringify(currentData));
+            updateCalculations();
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('userApiKey').value.trim();
+            if(key) {
+                localStorage.setItem('user_gemini_api_key', key);
+                // NOTA: Usando 'alert' por ser código client-side, mas o ideal seria um modal customizado
+                alert('Chave API salva com sucesso! Agora você pode usar a IA.');
+            } else {
+                // NOTA: Usando 'alert' por ser código client-side, mas o ideal seria um modal customizado
+                alert('Por favor, insira uma chave válida.');
+            }
+        }
+
+        // --- Renderização ---
+
+        function renderAll() {
+            // Inputs de Renda
+            document.getElementById('grossSalary').value = currentData.income.gross || '';
+            document.getElementById('discounts').value = currentData.income.discounts || '';
+            document.getElementById('manualNetIncome').value = currentData.income.manual || '';
+            
+            renderList('cards', 'cardsList');
+            renderList('savings', 'savingsList');
+            renderList('fixed', 'fixedList');
+            renderList('variable', 'variableList');
+            
+            updateCalculations();
+        }
+
+        function renderList(category, elementId) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+
+            currentData[category].forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-2 group p-2 hover:bg-gray-50 rounded";
+                
+                div.innerHTML = `
+                    <label class="checkbox-wrapper cursor-pointer">
+                        <input type="checkbox" class="hidden" ${item.paid ? 'checked' : ''} onchange="togglePaid('${category}', ${index})">
+                        <div class="w-6 h-6 border-2 border-gray-300 rounded flex items-center justify-center text-white ${item.paid ? 'bg-green-500 border-green-500' : 'bg-white'}">
+                            <i class="fas fa-check text-xs"></i>
+                        </div>
+                    </label>
+                    
+                    <input type="text" value="${item.name}" 
+                        onchange="updateItem('${category}', ${index}, 'name', this.value)"
+                        class="flex-1 bg-transparent border-b border-transparent focus:border-gray-300 outline-none text-gray-700 ${item.paid ? 'line-through opacity-50' : ''}" placeholder="Nome">
+                    
+                    <span class="text-gray-400 text-sm">R$</span>
+                    <input type="number" value="${item.value}" 
+                        onchange="updateItem('${category}', ${index}, 'value', this.value)"
+                        class="w-24 text-right bg-transparent border-b border-transparent focus:border-gray-300 outline-none font-medium ${item.paid ? 'line-through opacity-50' : ''}" placeholder="0.00">
+                    
+                    <button onclick="deleteItem('${category}', ${index})" class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- Lógica de Dados ---
+
+        function updateItem(category, index, field, value) {
+            if (field === 'value') value = parseFloat(value) || 0;
+            currentData[category][index][field] = value;
+            saveData();
+        }
+
+        function togglePaid(category, index) {
+            currentData[category][index].paid = !currentData[category][index].paid;
+            saveData();
+            renderList(category, category + 'List'); // Re-render para aplicar estilos
+        }
+
+        function deleteItem(category, index) {
+            // NOTA: Usando 'confirm' por ser código client-side, mas o ideal seria um modal customizado
+            if(confirm('Remover este item?')) {
+                currentData[category].splice(index, 1);
+                saveData();
+                renderList(category, category + 'List');
+            }
+        }
+
+        function addItem(category) {
+            // NOTA: Usando 'prompt' por ser código client-side, mas o ideal seria um modal customizado
+            const name = prompt("Nome do novo item:");
+            if (name) {
+                currentData[category].push({ 
+                    id: Date.now(), 
+                    name: name, 
+                    value: 0, 
+                    paid: false 
+                });
+                saveData();
+                renderList(category, category + 'List');
+            }
+        }
+
+        function toggleIncomeMode() {
+            isManualIncome = !isManualIncome;
+            const simple = document.getElementById('incomeSimple');
+            const detailed = document.getElementById('incomeDetailed');
+            
+            if (isManualIncome) {
+                simple.classList.remove('hidden');
+                detailed.classList.add('hidden');
+            } else {
+                simple.classList.add('hidden');
+                detailed.classList.remove('hidden');
+            }
+            updateCalculations();
+        }
+
+        function changeMonth(delta) {
+            const monthSelect = document.getElementById('monthSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            
+            let m = parseInt(monthSelect.value) + delta;
+            let y = parseInt(yearSelect.value);
+
+            if (m > 11) { m = 0; y++; }
+            if (m < 0) { m = 11; y--; }
+
+            monthSelect.value = m;
+            yearSelect.value = y;
+            loadData();
+        }
+
+        // --- Cálculos e Dashboard ---
+
+        function updateCalculations() {
+            // Salvar inputs de renda
+            currentData.income.gross = parseFloat(document.getElementById('grossSalary').value) || 0;
+            currentData.income.discounts = parseFloat(document.getElementById('discounts').value) || 0;
+            currentData.income.manual = parseFloat(document.getElementById('manualNetIncome').value) || 0;
+            
+            // Calcular Líquido
+            let netIncome = 0;
+            if (isManualIncome) {
+                netIncome = currentData.income.manual;
+            } else {
+                netIncome = currentData.income.gross - currentData.income.discounts;
+            }
+            document.getElementById('calculatedNet').innerText = formatBRL(netIncome);
+            document.getElementById('displayIncome').innerText = formatBRL(netIncome);
+
+            // Calcular Despesas por Categoria
+            const sumCategory = (cat) => currentData[cat].reduce((acc, item) => acc + (parseFloat(item.value)||0), 0);
+            
+            const totalCards = sumCategory('cards');
+            const totalSavings = sumCategory('savings');
+            const totalFixed = sumCategory('fixed');
+            const totalVariable = sumCategory('variable');
+
+            document.getElementById('totalCards').innerText = formatBRL(totalCards);
+
+            const totalExpenses = totalCards + totalSavings + totalFixed + totalVariable;
+            document.getElementById('displayExpenses').innerText = formatBRL(totalExpenses);
+
+            // Saldo Final
+            const balance = netIncome - totalExpenses;
+            document.getElementById('displayBalance').innerText = formatBRL(balance);
+
+            // Gasto Diário (Divide por 30)
+            const daily = Math.max(0, balance / 30);
+            document.getElementById('displayDaily').innerText = formatBRL(daily);
+
+            // Atualizar UI Status
+            const statusPanel = document.getElementById('statusPanel');
+            const statusMessage = document.getElementById('statusMessage');
+
+            if (balance < 0) {
+                statusPanel.className = "grid grid-cols-1 md:grid-cols-4 gap-4 text-white rounded-xl p-6 shadow-md transition-colors duration-500 bg-red-600";
+                statusMessage.innerText = "⚠️ Você está gastando mais do que ganha!";
+            } else if (balance < 100) {
+                 statusPanel.className = "grid grid-cols-1 md:grid-cols-4 gap-4 text-white rounded-xl p-6 shadow-md transition-colors duration-500 bg-yellow-600";
+                 statusMessage.innerText = "Cuidado, o orçamento está apertado.";
+            } else {
+                statusPanel.className = "grid grid-cols-1 md:grid-cols-4 gap-4 text-white rounded-xl p-6 shadow-md transition-colors duration-500 bg-green-600";
+                statusMessage.innerText = "Orçamento Saudável. Continue assim!";
+            }
+        }
+
+        function formatBRL(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function updateTips() {
+            const tips = [
+                "Reveja suas assinaturas (streaming, apps) mensalmente. Você usa todas?",
+                "Ao receber, separe primeiro o valor da economia, depois gaste o resto.",
+                "Tente concentrar gastos no Cartão de Crédito apenas se tiver o valor em conta para pagar a fatura.",
+                "Leve marmita para o trabalho para economizar no 'Variable'.",
+                "Negocie sua conta de Internet e Celular a cada 12 meses."
+            ];
+            const randomTip = tips[Math.floor(Math.random() * tips.length)];
+            document.getElementById('tipText').innerText = randomTip;
+        }
+
+        // --- Funções IA (Gemini) ---
+
+        async function callGeminiAdvisor() {
+            // Tenta pegar a chave do ambiente (se estiver no chat) OU do localStorage (se estiver baixado)
+            const apiKey = envApiKey || localStorage.getItem('user_gemini_api_key');
+            
+            const btn = document.getElementById('aiBtn');
+            const resultArea = document.getElementById('aiResult');
+
+            if (!apiKey) {
+                // NOTA: Usando 'alert' por ser código client-side, mas o ideal seria um modal customizado
+                alert("Para usar a IA, por favor configure sua Chave de API no campo 'Configurar Chave da IA' logo abaixo do botão.");
+                // Abre o details automaticamente para mostrar onde configurar
+                document.querySelector('details').open = true;
+                document.getElementById('userApiKey').focus();
+                return;
+            }
+
+            const monthText = document.getElementById('monthSelect').options[document.getElementById('monthSelect').selectedIndex].text;
+            const yearText = document.getElementById('yearSelect').value;
+
+            // Loading state
+            btn.disabled = true;
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analisando...';
+            resultArea.classList.remove('hidden');
+            resultArea.innerHTML = '<div class="flex items-center justify-center p-4 text-purple-600"><i class="fas fa-brain fa-bounce mr-3"></i> O Consultor Virtual está estudando seus números...</div>';
+
+            // Preparar dados para o prompt
+            // Simplificamos o objeto para enviar apenas nomes e valores para economizar tokens e ser mais direto
+            const simpleData = {
+                periodo: `${monthText}/${yearText}`,
+                renda: document.getElementById('displayIncome').innerText,
+                total_despesas: document.getElementById('displayExpenses').innerText,
+                saldo_previsto: document.getElementById('displayBalance').innerText,
+                detalhes: {
+                    cartoes: currentData.cards.map(i => `${i.name}: R$${i.value}`),
+                    fixas: currentData.fixed.map(i => `${i.name}: R$${i.value}`),
+                    variaveis: currentData.variable.map(i => `${i.name}: R$${i.value}`),
+                    metas_economia: currentData.savings.map(i => `${i.name}: R$${i.value}`)
+                }
+            };
+
+            const prompt = `
+                Atue como um consultor financeiro pessoal experiente, amigável e direto.
+                Analise os seguintes dados financeiros do usuário para ${simpleData.periodo}:
+                
+                ${JSON.stringify(simpleData, null, 2)}
+                
+                Por favor, forneça uma resposta curta estruturada assim:
+                1. **Diagnóstico Rápido**: Uma frase sobre a saúde financeira atual (Baseado no saldo).
+                2. **Alerta de Gastos**: Identifique 1 ou 2 itens específicos da lista de gastos (Cartões ou Variáveis) que parecem altos ou supérfluos e sugira atenção. Se não houver, elogie.
+                3. **Plano de Ação**: 2 dicas muito práticas para melhorar o saldo no próximo mês baseadas nesses números.
+                
+                Use emojis, seja motivador, fale em Português do Brasil e use formatação Markdown (negrito) para destacar pontos chave.
+            `;
+
+            try {
+                // Chamada à API Gemini
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: prompt }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) throw new Error('Falha na conexão com a IA (Verifique sua Chave API)');
+
+                const data = await response.json();
+                const aiText = data.candidates[0].content.parts[0].text;
+
+                // Formatação simples do Markdown para HTML
+                const formattedText = aiText
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-purple-700">$1</strong>') // Negrito
+                    .replace(/^[\*\-]\s/gm, '• '); // Listas
+
+                resultArea.innerHTML = `<div class="prose prose-purple max-w-none">${formattedText}</div>`;
+
+            } catch (error) {
+                console.error(error);
+                resultArea.innerHTML = `
+                    <div class="text-red-600 bg-red-50 p-4 rounded border border-red-200">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Ops! Não foi possível conectar com o Consultor IA.
+                        <br><span class="text-xs text-red-400">${error.message}</span>
+                        <div class="mt-2 text-xs text-gray-600">Verifique se sua chave API está correta em "Configurar Chave da IA".</div>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+            }
+        }
+
+    </script>
+</body>
+</html>
